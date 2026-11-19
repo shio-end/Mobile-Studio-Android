@@ -24,20 +24,23 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # ubuntu-24.04 GitHub-hosted runners already include Android SDK.
-      # Avoid android-actions/setup-android@v3: its obsolete SDK package
-      # installation has caused builds to fail before Gradle starts.
       - name: Check Android SDK
         shell: bash
         run: |
           set -euo pipefail
           SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
-          echo "SDK_ROOT=$SDK_ROOT"
-          test -d "$SDK_ROOT" || { echo "Android SDK directory not found"; exit 1; }
+          SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          echo "SDK root: $SDK_ROOT"
+          if [[ ! -x "$SDKMANAGER" ]]; then
+            echo "sdkmanager missing from: $SDKMANAGER"
+            find "$SDK_ROOT/cmdline-tools" -name sdkmanager -type f -print || true
+            exit 1
+          fi
           echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
-          sdkmanager --version
-          sdkmanager --sdk_root="$SDK_ROOT" 'platforms;android-35' 'build-tools;35.0.0'
+          echo "$SDK_ROOT/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          "$SDKMANAGER" --version
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" 'platforms;android-35' 'build-tools;35.0.0'
 
       - name: Install Gradle
         uses: gradle/actions/setup-gradle@v4
